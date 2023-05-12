@@ -10,20 +10,21 @@ import {
     SanityExtendedUserProfile,
     SanityExtendedUserProfileRef,
     SanityFollow,
-    SanityHashTag,
+    SanityHashTag, SanityHashtagCollectionType,
     SanityHashTagRelationshipType,
     SanityLike,
     SanityLikeRef,
     SanityPosition,
     SanityPost,
     SanityPostComment,
-    SanityPostRef,
+    SanityPostRef, SanitySpreadsheetRelationshipType,
     SanityTimelineEvent,
     SanityUser
 } from "../types";
 import groqQueries from "./groqQueries";
 import cmsUtils from "./cmsUtils";
 import LIKE_CATEGORY_ENUM from "./LikeCategoryEnum";
+import {CSVThetaChiMemberType} from "./csvClient";
 
 const createUser = async (email: string, userId: string, provider: any) => {
     const LOG_COMPONENT = "create-user-" + userId
@@ -46,7 +47,7 @@ const createUser = async (email: string, userId: string, provider: any) => {
 }
 
 
-const createLike = async (likerUserId: string, likeeId: string, likeType:LIKE_CATEGORY_ENUM): Promise<SanityLikeRef> => {
+const createLike = async (likerUserId: string, likeeId: string, likeType: LIKE_CATEGORY_ENUM): Promise<SanityLikeRef> => {
     const LOG_COMPONENT = "create-profile-like-profile-" + likerUserId + "-like-" + likeeId
 
     const newSanityDocument = {
@@ -63,7 +64,7 @@ const createLike = async (likerUserId: string, likeeId: string, likeType:LIKE_CA
         return e
     })
 }
-const createPosition = async (userId: string, position:SanityPosition): Promise<SanityPosition> => {
+const createPosition = async (userId: string, position: SanityPosition): Promise<SanityPosition> => {
     const LOG_COMPONENT = "create-position-" + userId;
 
     const newSanityDocument = {
@@ -79,19 +80,20 @@ const createPosition = async (userId: string, position:SanityPosition): Promise<
         return e
     })
 }
-const createIfHashtagNotExist = async (hashtag:String): Promise<SanityHashTag> => {
+const createIfHashtagNotExist = async (hashtag: string): Promise<SanityHashTag> => {
     const LOG_COMPONENT = "create-hashtag?-" + hashtag;
 
     const newSanityDocument = {
         _type: groqQueries.HASH_TAG.type,
-        _id: hashtag.replace('#',''),
+        _id: cmsUtils.convertToSlugStr(hashtag).replace('#', ''),
+        slug: cmsUtils.convertToSlugObj(cmsUtils.convertToSlugStr(hashtag)),
         tag: hashtag,
     }
 
     log(LOG_COMPONENT, "INFO", "Creating Hashtag", newSanityDocument)
 
     return sanityClient.createIfNotExists(newSanityDocument).catch((e: any) => {
-        log(LOG_COMPONENT, "ERROR", "could not create if hashtag didnt exist", {hashtag,e})
+        log(LOG_COMPONENT, "ERROR", "could not create if hashtag didnt exist", {hashtag, e})
         return e
     })
 }
@@ -100,14 +102,31 @@ const createHashtagRelationship = async (hashtag: SanityHashTag, documentId: str
 
     const newSanityDocument = {
         _type: groqQueries.HASH_TAG_RELATIONSHIP.type,
-        hashtagRef: cmsUtils.getSanityDocumentRef(hashtag.tag),
+        hashtagRef: cmsUtils.getSanityDocumentRef(cmsUtils.convertToSlugStr(hashtag.tag)),
         hashtaggedDocumentRef: cmsUtils.getSanityDocumentRef(documentId)
     }
 
     log(LOG_COMPONENT, "INFO", "Creating Hashtag Relationship", newSanityDocument)
 
     return sanityClient.create(newSanityDocument).catch((e: any) => {
-        log(LOG_COMPONENT, "ERROR", "could not create if hashtag relationship", {hashtag,e})
+        log(LOG_COMPONENT, "ERROR", "could not create if hashtag relationship", {hashtag, e})
+        return e
+    })
+}
+const createProfileRosterRelation = async (userId: string, rosterId: string): Promise<SanitySpreadsheetRelationshipType> => {
+    const LOG_COMPONENT = "create-roster-relationship-" + rosterId + "-"+ userId;
+
+    const newSanityDocument = {
+        _type: groqQueries.SPREADSHEET_RELATIONSHIP.type,
+        userRef: cmsUtils.getSanityDocumentRef(userId),
+        spreadsheetMemberRef: cmsUtils.getSanityDocumentRef(rosterId),
+        isApproved: false
+    }
+
+    log(LOG_COMPONENT, "INFO", "Creating Profile roster Relationship", newSanityDocument)
+
+    return sanityClient.create(newSanityDocument).catch((e: any) => {
+        log(LOG_COMPONENT, "ERROR", "could not create if profile roster relationship", {rosterId,userId, e})
         return e
     })
 }
@@ -214,7 +233,7 @@ const fetchUser = (userId: string): Promise<SanityUser | undefined> => {
         })
 }
 const fetchPost = (postId: string): Promise<SanityPost | undefined> => {
-    const LOG = "fetch-post" + postId
+    const LOG = "fetch-post-" + postId
 
     return sanityClient
         .fetch(
@@ -234,6 +253,56 @@ const fetchPost = (postId: string): Promise<SanityPost | undefined> => {
             const error = "Error retrieving post"
             log(LOG, "ERROR", error, {error: e})
             console.log(Error(`Error retrieving post Error: ${postId} - ` + e.toString()))
+            return Promise.resolve(undefined);
+        })
+}
+const fetchHashtagCollection = (hashtagCollectionSlug: string): Promise<SanityPost | undefined> => {
+    const LOG = "fetch-hashtag-collection-" + hashtagCollectionSlug
+
+    return sanityClient
+        .fetch(
+            `*[_type == $thisType && slug.current == $hashtagCollectionSlug]{
+          ${groqQueries.HASH_TAG_COLLECTION.members}
+       }`,
+            {hashtagCollectionSlug: hashtagCollectionSlug, thisType: groqQueries.HASH_TAG_COLLECTION.type}
+        ).then((data: SanityHashtagCollectionType[]) => {
+            log(LOG, "NOTICE", "The hashtag collection type raw", data)
+
+            if (!data[0]) {
+                console.log(Error(`Error retrieving hashtag collection no collection returned for slug ${hashtagCollectionSlug}: `))
+            }
+
+            return data[0]
+        }).catch((e: any) => {
+            const error = "Error retrieving hashtag collection"
+            log(LOG, "ERROR", error, {error: e})
+            console.log(Error(`Error retrieving hashtag collection Error: slug ${hashtagCollectionSlug} - ` + e.toString()))
+            return Promise.resolve(undefined);
+        })
+}
+
+
+const fetchChapterRoster = (): Promise<CSVThetaChiMemberType[] | undefined> => {
+    const LOG = "fetch-chapter-roster"
+
+    return sanityClient
+        .fetch(
+            `*[_type == $thisType]{
+          ...
+       }`,
+            {thisType: groqQueries.SPREADSHEET_MEMBER.type}
+        ).then((data: CSVThetaChiMemberType[]) => {
+            log(LOG, "NOTICE", "The chapter roster raw", data)
+
+            if (!data[0]) {
+                console.log(Error(`Error retrieving chapter roster`))
+            }
+
+            return data
+        }).catch((e: any) => {
+            const error = "Error retrieving chapter roster"
+            log(LOG, "ERROR", error, {error: e})
+            console.log(Error(error + e.toString()))
             return Promise.resolve(undefined);
         })
 }
@@ -339,13 +408,13 @@ const fetchProfileFollows = (userId: string): Promise<SanityFollow[] | undefined
             return Promise.resolve(undefined);
         })
 }
-const fetchProfileComments = (typeId:string, userId: string, blockedIds?: string[]): Promise<SanityComment[] | undefined> => {
+const fetchProfileComments = (typeId: string, userId: string, blockedIds?: string[]): Promise<SanityComment[] | undefined> => {
     const LOG = `fetch-${typeId}s-` + userId
 
     var queryString = "_type == $thisType && recipient._ref == $userId";
     var queryParams: any = {
         userId,
-        thisType: typeId == 'profile-comment'?groqQueries.COMMENT.type:groqQueries.POST_COMMENT.type,
+        thisType: typeId == 'profile-comment' ? groqQueries.COMMENT.type : groqQueries.POST_COMMENT.type,
     }
 
     if (blockedIds && blockedIds.length > 0) {
@@ -359,7 +428,7 @@ const fetchProfileComments = (typeId:string, userId: string, blockedIds?: string
     return sanityClient
         .fetch(
             `*[${queryString}]| order(publishedAt asc){
-          ${typeId == 'profile-comment'?groqQueries.COMMENT.members:groqQueries.POST_COMMENT.members}
+          ${typeId == 'profile-comment' ? groqQueries.COMMENT.members : groqQueries.POST_COMMENT.members}
        }`,
             queryParams
         ).then((data: SanityComment[]) => {
@@ -432,18 +501,23 @@ const uploadUserProfileImage = async (filePath: any, userId: string): Promise<Sa
             return Promise.reject(Error(`Error uploading user profile image asset to sanity for user ${userId} Error: ` + e.toString()))
         })
 }
-const uploadUserPost = async (filePath?: any, userId?: string, postBody?: string): Promise<SanityPostRef> => {
+const uploadUserPost = async (filePath?: any, userId?: string, postBody?: string):Promise<SanityPostRef|null> =>
+{
     const LOG_COMPONENT = "upload-user-post-image-" + userId
 
     var imageAsset
 
     if (filePath != null) {
-        imageAsset = await sanityClient.assets.upload("image", createReadStream(filePath) as unknown as Blob,
-            {filename: `${userId}-post-photo`})
+        try {
 
+            imageAsset = await sanityClient.assets.upload("image", createReadStream(filePath) as unknown as Blob,
+                {filename: `${userId}-post-photo`})
+            log(LOG_COMPONENT, "NOTICE", "The post Image Asset uploaded", {imageAsset})
+        } catch (e) {
+            log(LOG_COMPONENT, "ERROR", "The image could not be created in sanity aborting post creation", {e})
 
-        log(LOG_COMPONENT, "NOTICE", "The post Image Asset uploaded", {imageAsset})
-
+            return null;
+        }
     }
     log(LOG_COMPONENT, "NOTICE", "The post body", {postBody})
 
@@ -470,11 +544,9 @@ const uploadUserPost = async (filePath?: any, userId?: string, postBody?: string
     log(LOG_COMPONENT, "INFO", "Creating Post", newSanityDocument)
 
     return sanityClient.create(newSanityDocument).catch((e: any) => {
-        log(LOG_COMPONENT, "ERROR", "could not create post", {userId, postBody})
-        return e
+        log(LOG_COMPONENT, "ERROR", "could not create post", { userId, postBody, e})
+        return null
     })
-
-
 }
 const uploadBugReport = async (filePath?: any, userId?: string, title?: string, description?: string, uiVersion?: string, apiVersion?: string, uiSanityDB?: string, apiSanityDB?: string): Promise<SanityPostRef> => {
     const LOG_COMPONENT = "upload-bug-report-image-" + userId
@@ -583,6 +655,36 @@ const fetchAllUsers = (blockedIds?: string[]): Promise<SanityUser[]> => {
             return Promise.resolve([]);
         })
 }
+const fetchAllSpreadsheetRelations = (): Promise<SanitySpreadsheetRelationshipType[]> => {
+    const LOG = "fetch-all-spreadsheet-relations"
+
+    var queryString = "_type == $thisType";
+    var queryParams: any = {
+        thisType: groqQueries.SPREADSHEET_RELATIONSHIP.type,
+    }
+
+    log(LOG, "Notice", `All spreadsheet relations Query:`, {queryString, queryParams})
+
+    return sanityClient
+        .fetch(
+            `*[${queryString}]{
+          ${groqQueries.SPREADSHEET_RELATIONSHIP.members}
+       }`, queryParams
+        ).then((data: SanitySpreadsheetRelationshipType[]) => {
+            // log(LOG, "NOTICE", "The users raw", data)
+
+            if (!data) {
+                console.log(Error(`Error retrieving spreadsheet member relations`))
+            }
+
+            return data
+        }).catch((e: any) => {
+            const error = "Error retrieving spreadsheet member relations"
+            log(LOG, "ERROR", error, {error: e})
+            // console.log(Error(`Error retrieving Users Error: - ` + e.toString()))
+            return Promise.resolve([]);
+        })
+}
 const fetchAllUsersPaginated = (pageSize: number, theLastId?: string, blockedIds?: string[]): Promise<SanityUser[]> => {
     const LOG = `fetch-users-paginated-start-at-${theLastId}-${pageSize}`
 
@@ -652,13 +754,13 @@ const fetchAllPostsPaginated = (pageSize: number, theLastId?: string, blockedIds
 
     return sanityClient
         .fetch(
-            `*[${queryString}] | order(_publishedAt desc)[0...${pageSize}]{
+            `*[${queryString}] | order(_id asc,_createdAt asc)[0...${pageSize}]{
           ${groqQueries.POST.members}
        }`, {...queryParams}
         ).then((data: SanityPost[]) => {
             // log(LOG, "NOTICE", "The users raw", data)
-            if(data){
-                data.forEach((element)=>{
+            if (data) {
+                data.forEach((element) => {
                     log(LOG, "DEBUG", element.publishedAt.toString());
                 })
             }
@@ -675,14 +777,15 @@ const fetchAllPostsPaginated = (pageSize: number, theLastId?: string, blockedIds
         })
 }
 
-const fetchHashtaggedPostsPaginated = (hashtagId:string, pageSize: string, theLastId?: string, blockedIds?: string[]): Promise<SanityPost[]> => {
-    const LOG = `fetch-posts-paginated-start-at-${theLastId}-${pageSize}`
+const fetchHashtaggedPostsPaginated = (hashtagId: string, pageSize: string, theLastId?: string, blockedIds?: string[]): Promise<SanityPost[]> => {
+    const LOG = `fetch-#${hashtagId}-hashtagged-posts-paginated-start-at-${theLastId}-${pageSize}`
 
     var lastId: (string | null) = theLastId ?? null
-    var queryString = "_type == $thisType && references($hashtagId)"
+    var queryString = "_type == $thisType && hashtagRef->slug.current == $slug"
     var queryParams: any = {
         thisType: groqQueries.HASH_TAG_RELATIONSHIP.type,
-        hashtagId: hashtagId,
+        hashtagId: cmsUtils.convertToSlugStr(hashtagId),
+        slug: cmsUtils.convertToSlugStr(hashtagId)
         // pageSize: pageSize,
     }
 
@@ -702,8 +805,8 @@ const fetchHashtaggedPostsPaginated = (hashtagId:string, pageSize: string, theLa
 
     return sanityClient
         .fetch(
-            `*[${queryString}] | order(_publishedAt desc)[0...${pageSize}]{
-          ${groqQueries.HASH_TAG_RELATIONSHIP.members}
+            `*[${queryString}] | order(_createdAt desc)[0...${pageSize}]{
+          hashtaggedDocumentRef->
        }`, {...queryParams}
         ).then((data: SanityHashTagRelationshipType[]) => {
             // log(LOG, "NOTICE", "The hashtagged posts raw", data)
@@ -717,7 +820,7 @@ const fetchHashtaggedPostsPaginated = (hashtagId:string, pageSize: string, theLa
                 console.log(Error(`Error retrieving hashtagged paginated posts: hashtag=${hashtagId} page=${pageSize} lastId=${lastId} `))
             }
 
-            return data.map((hashtagRelation)=>{
+            return data.map((hashtagRelation) => {
                 return hashtagRelation.hashtaggedDocumentRef;
             })
         }).catch((e: any) => {
@@ -726,7 +829,7 @@ const fetchHashtaggedPostsPaginated = (hashtagId:string, pageSize: string, theLa
             return Promise.resolve([]);
         })
 }
-const fetchPostCommentsPaginated = (documentId:string, pageSize: number, theLastId?: string, blockedIds?: string[]): Promise<SanityPostComment[]> => {
+const fetchPostCommentsPaginated = (documentId: string, pageSize: number, theLastId?: string, blockedIds?: string[]): Promise<SanityPostComment[]> => {
     const LOG = `fetch-post-${documentId}-comments-paginated-start-at-${theLastId}-${pageSize}`
 
     var lastId: (string | null) = theLastId ?? null
@@ -963,7 +1066,7 @@ const createProfileComment = async (commenterUserId: string, profileUserId: stri
         return e
     })
 }
-const createPostComment = async (commenterUserId: string, profileUserId: string,commentBody: string) => {
+const createPostComment = async (commenterUserId: string, profileUserId: string, commentBody: string) => {
     const LOG_COMPONENT = "create-post-comment-profile-" + profileUserId + "-comment-by-" + commenterUserId
 
     const newSanityDocument = {
@@ -998,7 +1101,54 @@ const createCommentThread = async (postId: string,) => {
     })
 }
 
+const createSanityDocument = async (document: CSVThetaChiMemberType, sanityType: string) => {
+    const newSanityDocument = {
+        _type: sanityType,
+        isAutoGenerated: true,
+        ...document,
+        slug: cmsUtils.convertToSlugObj(document.spreadsheetId.toString()),
+    };
+
+    log("createSanityItemDocument", "NOTICE", "processing sanity document", document);
+    log("createSanityItemDocument", "NOTICE", "processing sanity document", newSanityDocument);
+
+    if (!sanityType) {
+        log("createSanityItemDocument", "ERROR", "Can't process this document", {document, sanityType});
+
+        // eslint-disable-next-line prefer-promise-reject-errors
+        return Promise.reject();
+    }
+
+    const foundItem: any = await sanityClient
+        .fetch(
+            "*[_type == $type && slug.current == $slug]", {
+                slug: document.spreadsheetId,
+                type: sanityType
+            }).then((data: any[]) => data[0]);
+
+    if (foundItem) {
+        log("createSanityItemDoc", "NOTICE", "updating document with slug: ", {
+            foundItem,
+            slug: document.slug,
+            type: sanityType,
+            potentialDocument: newSanityDocument
+        });
+
+        return sanityClient.patch(foundItem._id).set({
+            ...newSanityDocument,
+        }).commit();
+    } else {
+        log("createSanityItemDoc", "NOTICE", "creating document with slug ", newSanityDocument);
+
+        return sanityClient.create({
+            ...newSanityDocument,
+        });
+    }
+};
+
 export default {
+    fetchAllSpreadsheetRelations,
+    createProfileRosterRelation,
     fetchHashtaggedPostsPaginated,
     createHashtagRelationship,
     createIfHashtagNotExist,
@@ -1035,5 +1185,8 @@ export default {
     fetchMyProfileBlocks,
     fetchBiDirectionalProfileBlocks,
     fetchProfileTimelineEvents,
-    fetchProfileTimelineEventsRef
+    fetchProfileTimelineEventsRef,
+    fetchHashtagCollection,
+    fetchChapterRoster,
+    createSanityDocument
 };

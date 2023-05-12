@@ -30,8 +30,20 @@ export default () =>
                 .title('Hashtag')
                 .child(createSuperPane('Hashtag', S)),
             S.listItem()
+                .title('Hashtag Collection')
+                .child(createSuperPane('HashtagCollection', S)),
+            S.listItem()
                 .title('HashtagRelation')
                 .child(createSuperPane('HashtagRelation', S)),
+            S.listItem()
+                .title('Spread Sheet Member to User Relation')
+                .child(createSuperPane('SpreadsheetMemberRelation', S)),
+            S.listItem()
+                .title('Csv to process')
+                .child(createSuperPane('csvToProcess', S)),
+            S.listItem()
+                .title('Spreadsheet Member')
+                .child(createSuperPane('spreadsheetMember', S)),
             S.listItem()
                 .title('Like')
                 .child(createSuperPane('Like', S)),

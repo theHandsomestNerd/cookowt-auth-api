@@ -1,6 +1,6 @@
 {
   "name": "functions",
-  "version": "1.0.0-alpha.18",
+  "version": "1.0.0-alpha.28",
   "scripts": {
     "lint": "eslint --ext .js,.ts .",
     "clean": "rm -Rf lib",
@@ -23,8 +23,10 @@
     "@types/uuid": "^9.0.1",
     "busboy": "^1.6.0",
     "firebase-admin": "^10.0.2",
-    "firebase-functions": "^4.2.1",
+    "firebase-functions": "^4.3.1",
     "genversion": "^3.1.1",
+    "get-csv": "^3.0.3",
+    "queue-promise": "^2.2.1",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
