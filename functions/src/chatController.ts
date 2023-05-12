@@ -996,6 +996,31 @@ const getHashtaggedPostsPaginated = async (req: any, res: any) => {
     }
     return res.status(401).send({message: "NOt authorized", posts: []});
 }
+const searchHashtaggedPostsPaginated = async (req: any, res: any) => {
+    const {searchTerms, pageSize, lastId}: { searchTerms: string, pageSize: string, lastId: string } = req.body
+
+    const LOG_COMPONENT = `search-hashtagged-posts-${searchTerms}-${pageSize}-${lastId}`
+    logClient.log(LOG_COMPONENT, "NOTICE",
+        "Search  Hashtagged Posts Request")
+
+
+    const headers = req.headers;
+    if (headers.authorization) {
+        const whoami = await authService.getUserFromAccessToken(headers.authorization);
+
+        if (!whoami.uid) {
+            return res.status(400).json({error: "No valid user from this Access Token"})
+        } else {
+            const hashtaggedPosts = await cmsService.searchHashtaggedPostsPaginated(whoami.uid, searchTerms, pageSize, lastId);
+
+            logClient.log(LOG_COMPONENT, "NOTICE",
+                "Posts", hashtaggedPosts?.length);
+
+            return res.status(200).send({posts: hashtaggedPosts});
+        }
+    }
+    return res.status(401).send({message: "NOt authorized", posts: []});
+}
 
 const commentDocument = async (req: any, res: any) => {
 
@@ -1150,6 +1175,7 @@ const createPost = async (req: any, res: any) => {
 export default {
     getVerifications,
     getHashtaggedPostsPaginated,
+    searchHashtaggedPostsPaginated,
     getMyProfile,
     getExtendedProfile,
     updateCreateExtendedProfile,

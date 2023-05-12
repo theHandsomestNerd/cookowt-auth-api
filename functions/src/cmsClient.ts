@@ -114,7 +114,7 @@ const createHashtagRelationship = async (hashtag: SanityHashTag, documentId: str
     })
 }
 const createProfileRosterRelation = async (userId: string, rosterId: string): Promise<SanitySpreadsheetRelationshipType> => {
-    const LOG_COMPONENT = "create-roster-relationship-" + rosterId + "-"+ userId;
+    const LOG_COMPONENT = "create-roster-relationship-" + rosterId + "-" + userId;
 
     const newSanityDocument = {
         _type: groqQueries.SPREADSHEET_RELATIONSHIP.type,
@@ -126,7 +126,7 @@ const createProfileRosterRelation = async (userId: string, rosterId: string): Pr
     log(LOG_COMPONENT, "INFO", "Creating Profile roster Relationship", newSanityDocument)
 
     return sanityClient.create(newSanityDocument).catch((e: any) => {
-        log(LOG_COMPONENT, "ERROR", "could not create if profile roster relationship", {rosterId,userId, e})
+        log(LOG_COMPONENT, "ERROR", "could not create if profile roster relationship", {rosterId, userId, e})
         return e
     })
 }
@@ -501,8 +501,7 @@ const uploadUserProfileImage = async (filePath: any, userId: string): Promise<Sa
             return Promise.reject(Error(`Error uploading user profile image asset to sanity for user ${userId} Error: ` + e.toString()))
         })
 }
-const uploadUserPost = async (filePath?: any, userId?: string, postBody?: string):Promise<SanityPostRef|null> =>
-{
+const uploadUserPost = async (filePath?: any, userId?: string, postBody?: string): Promise<SanityPostRef | null> => {
     const LOG_COMPONENT = "upload-user-post-image-" + userId
 
     var imageAsset
@@ -544,7 +543,7 @@ const uploadUserPost = async (filePath?: any, userId?: string, postBody?: string
     log(LOG_COMPONENT, "INFO", "Creating Post", newSanityDocument)
 
     return sanityClient.create(newSanityDocument).catch((e: any) => {
-        log(LOG_COMPONENT, "ERROR", "could not create post", { userId, postBody, e})
+        log(LOG_COMPONENT, "ERROR", "could not create post", {userId, postBody, e})
         return null
     })
 }
@@ -818,6 +817,64 @@ const fetchHashtaggedPostsPaginated = (hashtagId: string, pageSize: string, theL
 
             if (!data) {
                 console.log(Error(`Error retrieving hashtagged paginated posts: hashtag=${hashtagId} page=${pageSize} lastId=${lastId} `))
+            }
+
+            return data.map((hashtagRelation) => {
+                return hashtagRelation.hashtaggedDocumentRef;
+            })
+        }).catch((e: any) => {
+            const error = "Error retrieving paginated Posts"
+            log(LOG, "ERROR", error, {error: e})
+            return Promise.resolve([]);
+        })
+}
+const searchHashtaggedPostsPaginated = (searchTerms: string, pageSize: string, theLastId?: string, blockedIds?: string[]): Promise<SanityPost[]> => {
+    const LOG = `fetch-#${searchTerms}-hashtagged-posts-paginated-start-at-${theLastId}-${pageSize}`
+
+    // search for or
+    var theSearchTerms = searchTerms.toLowerCase().split(" ").map((a)=>{return "hashtagRef->slug.current match '*"+a.trim()+"*'"}).join(" || ");
+
+    // var orClauses = theSearchTerms.map((theTerm)=>{
+    //     return `|| hashtagRef->tag match *${theTerm}*`
+    // })
+
+
+    var lastId: (string | null) = theLastId ?? null
+    var queryString = `_type == $thisType && ${theSearchTerms}`
+    var queryParams: any = {
+        thisType: groqQueries.HASH_TAG_RELATIONSHIP.type,
+        // pageSize: pageSize,
+    }
+
+    if (lastId != null && lastId != "") {
+        queryString += " && _id > $lastId"
+        queryParams = {...queryParams, lastId}
+    }
+
+    if (blockedIds && blockedIds.length > 0) {
+        log(LOG, "DEBUG", "I have blocked these users", blockedIds)
+        queryParams = {...queryParams, blockedIds: blockedIds}
+        queryString += " && !(hashtaggedDocumentRef.author._id in $blockedIds)"
+    }
+
+    log(LOG, "DEBUG", `Hashtagged posts Query paginated starting at ${lastId}:`, {queryString, queryParams})
+
+
+    return sanityClient
+        .fetch(
+            `*[${queryString}] | order(_id asc, _createdAt asc)[0...${pageSize}]{
+          hashtaggedDocumentRef->
+       }`, {...queryParams}
+        ).then((data: SanityHashTagRelationshipType[]) => {
+            // log(LOG, "NOTICE", "The hashtagged posts raw", data)
+            // if(data){
+            //     data.forEach((element)=>{
+            //         log(LOG, "DEBUG", element.hashtaggedDocumentRef.publishedAt.toString());
+            //     })
+            // }
+
+            if (!data) {
+                console.log(Error(`Error searching hashtagged paginated posts: searchTerms=${searchTerms} page=${pageSize} lastId=${lastId} querystring=${queryString} queryparams=${queryParams}`))
             }
 
             return data.map((hashtagRelation) => {
@@ -1150,6 +1207,7 @@ export default {
     fetchAllSpreadsheetRelations,
     createProfileRosterRelation,
     fetchHashtaggedPostsPaginated,
+    searchHashtaggedPostsPaginated,
     createHashtagRelationship,
     createIfHashtagNotExist,
     createCommentThread,

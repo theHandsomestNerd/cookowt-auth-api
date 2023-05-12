@@ -92,6 +92,7 @@ app.get("/get-post/:id", chatController.getPostById);
 app.get("/get-all-posts", chatController.getAllPosts);
 app.get("/get-all-posts-paginated/:pageSize/:lastId", chatController.getAllPostsPaginated);
 app.get("/get-all-posts-paginated/:pageSize", chatController.getAllPostsPaginated);
+app.post("/search-hashtagged-posts-paginated", chatController.searchHashtaggedPostsPaginated);
 app.get("/get-hashtagged-posts-paginated/:hashtagId/:pageSize/:lastId", chatController.getHashtaggedPostsPaginated);
 app.get("/get-hashtagged-posts-paginated/:hashtagId/:pageSize", chatController.getHashtaggedPostsPaginated);
 

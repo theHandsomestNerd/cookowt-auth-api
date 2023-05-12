@@ -89,6 +89,15 @@ const fetchHashtaggedPostsPaginated = async (userId: string, hashtagId: string, 
 
     return cmsClient.fetchHashtaggedPostsPaginated(hashtagId, pageSize, lastId, blockedUserIds);
 }
+const searchHashtaggedPostsPaginated = async (userId: string, searchTerms: string, pageSize: string, lastId?: string) => {
+    var blockedUsers = await cmsClient.fetchBiDirectionalProfileBlocks(userId);
+
+    var blockedUserIds = blockedUsers?.map((blockedUser) => {
+        return blockedUser.blocked._id
+    });
+
+    return cmsClient.searchHashtaggedPostsPaginated(searchTerms, pageSize, lastId, blockedUserIds);
+}
 const fetchPostCommentsPaginated = async (userId: string, documentId: string, pageSize: number, lastId?: string,) => {
     var blockedUsers = await cmsClient.fetchBiDirectionalProfileBlocks(userId);
 
@@ -167,6 +176,7 @@ const createOrNotHashtags = async (hashtags: string[], postId: string) => {
 
 export default {
     fetchHashtaggedPostsPaginated,
+    searchHashtaggedPostsPaginated,
     createOrNotHashtags,
     fetchPosts,
     createPost,
