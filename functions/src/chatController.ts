@@ -339,6 +339,15 @@ const updateCreateExtendedProfile = async (req: any, res: any) => {
         height,
         weight,
         age,
+        iAm,
+        imInto,
+        imOpenTo,
+        whatIDo,
+        whatImLookingFor,
+        whatInterestsMe,
+        whereILive,
+        gender,
+        sexPreferences,
     } = req.body;
 
     logClient.log(LOG_COMPONENT, "NOTICE",
@@ -385,6 +394,68 @@ const updateCreateExtendedProfile = async (req: any, res: any) => {
             profileData = {
                 ...profileData,
                 height: intermediateHeight,
+            }
+        }
+
+        if (iAm) {
+            profileData = {
+                ...profileData,
+                iAm: iAm,
+            }
+        }
+        if (imInto) {
+            profileData = {
+                ...profileData,
+                imInto: imInto,
+            }
+        }
+        if (imOpenTo) {
+            profileData = {
+                ...profileData,
+                imOpenTo: imOpenTo,
+            }
+        }
+        if (whatIDo) {
+            profileData = {
+                ...profileData,
+                whatIDo: whatIDo,
+            }
+        }
+        if (whatImLookingFor) {
+            profileData = {
+                ...profileData,
+                whatImLookingFor: whatImLookingFor,
+            }
+        }
+        if (whatInterestsMe) {
+            profileData = {
+                ...profileData,
+                whatInterestsMe: whatInterestsMe,
+            }
+        }
+        if (whatImLookingFor) {
+            profileData = {
+                ...profileData,
+                whatImLookingFor: whatImLookingFor,
+            }
+        }
+        if (whereILive) {
+            profileData = {
+                ...profileData,
+                whereILive: whereILive,
+            }
+        }
+        if (sexPreferences) {
+            profileData = {
+                ...profileData,
+                sexPreferences: sexPreferences,
+            }
+        }
+
+        if (gender) {
+            profileData = {
+                ...profileData,
+                gender: gender,
             }
         }
 

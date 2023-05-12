@@ -80,14 +80,14 @@ const fetchAllPostsPaginated = async (userId: string, pageSize: number, lastId?:
 
     return cmsClient.fetchAllPostsPaginated(pageSize, lastId, blockedUserIds);
 }
-const fetchHashtaggedPostsPaginated = async (userId: string, hashtagId:string, pageSize: string, lastId?: string,) => {
+const fetchHashtaggedPostsPaginated = async (userId: string, hashtagId: string, pageSize: string, lastId?: string,) => {
     var blockedUsers = await cmsClient.fetchBiDirectionalProfileBlocks(userId);
 
     var blockedUserIds = blockedUsers?.map((blockedUser) => {
         return blockedUser.blocked._id
     });
 
-    return  cmsClient.fetchHashtaggedPostsPaginated(hashtagId, pageSize, lastId, blockedUserIds);
+    return cmsClient.fetchHashtaggedPostsPaginated(hashtagId, pageSize, lastId, blockedUserIds);
 }
 const fetchPostCommentsPaginated = async (userId: string, documentId: string, pageSize: number, lastId?: string,) => {
     var blockedUsers = await cmsClient.fetchBiDirectionalProfileBlocks(userId);
@@ -132,7 +132,7 @@ const createPost = async (imageFile?: any, userId?: string, postBody?: string) =
         // if (imageFile.filepath) {
         const postUploaded = await cmsClient.uploadUserPost(imageFile?.filepath, userId, postBody)
         // create comment thread link to post
-        if(postUploaded == null){
+        if (postUploaded == null) {
             return null;
         }
         await cmsClient.createCommentThread(postUploaded._id);
@@ -146,7 +146,10 @@ const createPost = async (imageFile?: any, userId?: string, postBody?: string) =
 
 const createOrNotHashtags = async (hashtags: string[], postId: string) => {
     var sanityHashtagList = await Promise.all(hashtags.map(async (hashtag: string) => {
-        return cmsClient.createIfHashtagNotExist(hashtag);
+        const theHashtagCreationResponse = await cmsClient.createIfHashtagNotExist(hashtag);
+        console.log(theHashtagCreationResponse)
+
+        return theHashtagCreationResponse
     }));
 
     return Promise.all(sanityHashtagList.map(async (hashtag) => {
