@@ -996,13 +996,12 @@ const getHashtaggedPostsPaginated = async (req: any, res: any) => {
     }
     return res.status(401).send({message: "NOt authorized", posts: []});
 }
-const searchHashtaggedPostsPaginated = async (req: any, res: any) => {
-    const {searchTerms, pageSize, lastId}: { searchTerms: string, pageSize: string, lastId: string } = req.body
+const paginatedSearch = async (req: any, res: any) => {
+    const {searchTerms, pageSize, lastId, searchType}: { searchTerms: string, pageSize: string, lastId: string, searchType:string } = req.body
 
-    const LOG_COMPONENT = `search-hashtagged-posts-${searchTerms}-${pageSize}-${lastId}`
+    const LOG_COMPONENT = `search-${searchType}-${searchTerms}-${pageSize}-${lastId}`
     logClient.log(LOG_COMPONENT, "NOTICE",
-        "Search  Hashtagged Posts Request")
-
+        `Search ${searchType} Request`)
 
     const headers = req.headers;
     if (headers.authorization) {
@@ -1011,12 +1010,19 @@ const searchHashtaggedPostsPaginated = async (req: any, res: any) => {
         if (!whoami.uid) {
             return res.status(400).json({error: "No valid user from this Access Token"})
         } else {
-            const hashtaggedPosts = await cmsService.searchHashtaggedPostsPaginated(whoami.uid, searchTerms, pageSize, lastId);
-
-            logClient.log(LOG_COMPONENT, "NOTICE",
-                "Posts", hashtaggedPosts?.length);
-
-            return res.status(200).send({posts: hashtaggedPosts});
+            switch (searchType){
+                case "SEARCH_TYPE_ENUM.profiles":
+                    const profileResults = await cmsService.searchProfilesPaginated(whoami.uid, searchTerms, pageSize, lastId);
+                    logClient.log(LOG_COMPONENT, "NOTICE",
+                        "Profiles", profileResults?.length);
+                    return res.status(200).send({profiles: profileResults});
+                default:
+                case "SEARCH_TYPE_ENUM.hashtags":
+                    const hashtaggedPosts = await cmsService.searchHashtaggedPostsPaginated(whoami.uid, searchTerms, pageSize, lastId);
+                    logClient.log(LOG_COMPONENT, "NOTICE",
+                        "Posts", hashtaggedPosts?.length);
+                    return res.status(200).send({posts: hashtaggedPosts});
+            }
         }
     }
     return res.status(401).send({message: "NOt authorized", posts: []});
@@ -1175,7 +1181,7 @@ const createPost = async (req: any, res: any) => {
 export default {
     getVerifications,
     getHashtaggedPostsPaginated,
-    searchHashtaggedPostsPaginated,
+    paginatedSearch,
     getMyProfile,
     getExtendedProfile,
     updateCreateExtendedProfile,
