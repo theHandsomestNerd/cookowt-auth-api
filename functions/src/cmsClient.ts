@@ -892,7 +892,13 @@ const searchProfilesPaginated = (searchTerms: string, pageSize: string, theLastI
     // var postBodySearch = searchTerms.length > 0?` || hashtaggedDocumentRef->body match '*${searchTerms.toLowerCase()}*'`:"";
 
     var lastId: (string | null) = theLastId ?? null
-    var queryString = `_type == $thisType && ${theSearchTerms}`
+    var queryString:string
+    if(searchTerms == ""){
+        theSearchTerms = ""
+    } else {
+        theSearchTerms = " && "+theSearchTerms;
+    }
+    queryString = `_type == $thisType${theSearchTerms}`
     var queryParams: any = {
         thisType: groqQueries.USER.type,
         // pageSize: pageSize,

@@ -536,18 +536,18 @@ const updatePosition = async (req: any, res: any) => {
 
     const LOG_COMPONENT = `update-position`
 
-    logClient.log(LOG_COMPONENT, "NOTICE",
-        `Updating user position`, {
-            longitude,
-            latitude,
-            timestamp,
-            accuracy,
-            altitude,
-            heading,
-            speed,
-            speedAccuracy,
-            floor
-        });
+    // logClient.log(LOG_COMPONENT, "DEBUG",
+    //     `Updating user position`, {
+    //         longitude,
+    //         latitude,
+    //         timestamp,
+    //         accuracy,
+    //         altitude,
+    //         heading,
+    //         speed,
+    //         speedAccuracy,
+    //         floor
+    //     });
 
     if (headers.authorization) {
         const whoami: DecodedIdToken = await authService.getUserFromAccessToken(headers.authorization);
@@ -567,8 +567,8 @@ const updatePosition = async (req: any, res: any) => {
 
         const creationStatus = await cmsService.createPosition(whoami.uid, position)
         if (creationStatus._id) {
-            logClient.log(LOG_COMPONENT + "-" + whoami.uid, "NOTICE",
-                "created a Sanity Position", {likeStatus: "SUCCESS"});
+            // logClient.log(LOG_COMPONENT + "-" + whoami.uid, "NOTICE",
+            //     "created a Sanity Position", {likeStatus: "SUCCESS"});
 
             return res.status(200).json({likeStatus: "SUCCESS", body: creationStatus});
         } else {
@@ -1011,13 +1011,13 @@ const paginatedSearch = async (req: any, res: any) => {
             return res.status(400).json({error: "No valid user from this Access Token"})
         } else {
             switch (searchType){
-                case "SEARCH_TYPE_ENUM.profiles":
+                case "profiles":
                     const profileResults = await cmsService.searchProfilesPaginated(whoami.uid, searchTerms, pageSize, lastId);
                     logClient.log(LOG_COMPONENT, "NOTICE",
                         "Profiles", profileResults?.length);
                     return res.status(200).send({profiles: profileResults});
                 default:
-                case "SEARCH_TYPE_ENUM.hashtags":
+                case "hashtags":
                     const hashtaggedPosts = await cmsService.searchHashtaggedPostsPaginated(whoami.uid, searchTerms, pageSize, lastId);
                     logClient.log(LOG_COMPONENT, "NOTICE",
                         "Posts", hashtaggedPosts?.length);
