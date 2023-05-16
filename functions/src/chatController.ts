@@ -1017,15 +1017,20 @@ const paginatedSearch = async (req: any, res: any) => {
                         "Profiles", profileResults?.length);
                     return res.status(200).send({profiles: profileResults});
                 default:
-                case "hashtags":
+                case "hashtagRelations":
                     const hashtaggedPosts = await cmsService.searchHashtaggedPostsPaginated(whoami.uid, searchTerms, pageSize, lastId);
                     logClient.log(LOG_COMPONENT, "NOTICE",
                         "Posts", hashtaggedPosts?.length);
                     return res.status(200).send({posts: hashtaggedPosts});
+                case "hashtags":
+                    const hashtags = await cmsService.searchHashtagsPaginated(whoami.uid, searchTerms, pageSize, lastId);
+                    logClient.log(LOG_COMPONENT, "NOTICE",
+                        "Hashtags", hashtags?.length);
+                    return res.status(200).send({hashtags: hashtags});
             }
         }
     }
-    return res.status(401).send({message: "NOt authorized", posts: []});
+    return res.status(401).send({message: "Not authorized", posts: []});
 }
 
 const commentDocument = async (req: any, res: any) => {
