@@ -1016,17 +1016,22 @@ const paginatedSearch = async (req: any, res: any) => {
                     logClient.log(LOG_COMPONENT, "NOTICE",
                         "Profiles", profileResults?.length);
                     return res.status(200).send({profiles: profileResults});
+                case "hashtags":
+                    const hashtags = await cmsService.searchHashtagsPaginated(whoami.uid, searchTerms, pageSize, lastId);
+                    logClient.log(LOG_COMPONENT, "NOTICE",
+                        "Hashtags", hashtags?.length);
+                    return res.status(200).send({hashtags: hashtags});
+                case "posts":
+                    const posts = await cmsService.searchPostsPaginated(whoami.uid, searchTerms, pageSize, lastId);
+                    logClient.log(LOG_COMPONENT, "NOTICE",
+                        "Posts", posts?.length);
+                    return res.status(200).send({posts: posts});
                 default:
                 case "hashtagRelations":
                     const hashtaggedPosts = await cmsService.searchHashtaggedPostsPaginated(whoami.uid, searchTerms, pageSize, lastId);
                     logClient.log(LOG_COMPONENT, "NOTICE",
                         "Posts", hashtaggedPosts?.length);
                     return res.status(200).send({posts: hashtaggedPosts});
-                case "hashtags":
-                    const hashtags = await cmsService.searchHashtagsPaginated(whoami.uid, searchTerms, pageSize, lastId);
-                    logClient.log(LOG_COMPONENT, "NOTICE",
-                        "Hashtags", hashtags?.length);
-                    return res.status(200).send({hashtags: hashtags});
             }
         }
     }

@@ -934,6 +934,64 @@ const searchHashtagsPaginated = (searchTerms: string, pageSize: string, theLastI
             return Promise.resolve([]);
         })
 }
+const searchPostsPaginated = (searchTerms: string, pageSize: string, theLastId?: string, blockedIds?:string[]): Promise<SanityPost[]> => {
+    const LOG = `search-${searchTerms}-posts-paginated-start-at-${theLastId}-${pageSize}`
+
+    // search for or
+    var theSearchTerms = searchTerms.toLowerCase().split(" ").map((a)=>{return "body match '*"+a.trim()+"*'"}).join(" || ");
+
+
+    if(searchTerms == "") {
+        theSearchTerms = ""
+    } else {
+        theSearchTerms = " && " + theSearchTerms;
+    }
+
+    var lastId: (string | null) = theLastId ?? null
+    var queryString = `_type == $thisType${theSearchTerms}`
+    var queryParams: any = {
+        thisType: groqQueries.POST.type,
+        // pageSize: pageSize,
+    }
+
+    if (lastId != null && lastId != "") {
+        queryString += " && _id > $lastId"
+        queryParams = {...queryParams, lastId}
+    }
+
+    if (blockedIds && blockedIds.length > 0) {
+        log(LOG, "DEBUG", "I have blocked these users", blockedIds)
+        queryParams = {...queryParams, blockedIds: blockedIds}
+        queryString += " && !(author._id in $blockedIds)"
+    }
+
+    log(LOG, "DEBUG", `Posts Query paginated starting at ${lastId}:`, {queryString, queryParams})
+
+
+    return sanityClient
+        .fetch(
+            `*[${queryString}] | order(_id asc, _createdAt asc)[0...${pageSize}]{
+          ${groqQueries.POST.members}
+       }`, {...queryParams}
+        ).then((data: SanityPost[]) => {
+            // log(LOG, "NOTICE", "The hashtagged posts raw", data)
+            // if(data){
+            //     data.forEach((element)=>{
+            //         log(LOG, "DEBUG", element.hashtaggedDocumentRef.publishedAt.toString());
+            //     })
+            // }
+
+            if (!data) {
+                console.log(Error(`Error searching posts paginated: searchTerms=${searchTerms} page=${pageSize} lastId=${lastId} querystring=${queryString} queryparams=${queryParams}`))
+            }
+
+            return data;
+        }).catch((e: any) => {
+            const error = "Error retrieving paginated posts"
+            log(LOG, "ERROR", error, {error: e})
+            return Promise.resolve([]);
+        })
+}
 const searchProfilesPaginated = (searchTerms: string, pageSize: string, theLastId?: string, blockedIds?: string[]): Promise<SanityPost[]> => {
     const LOG = `search-#${searchTerms}-profiles-paginated-start-at-${theLastId}-${pageSize}`
 
@@ -1316,6 +1374,7 @@ export default {
     fetchHashtaggedPostsPaginated,
     searchHashtaggedPostsPaginated,
     searchHashtagsPaginated,
+    searchPostsPaginated,
     searchProfilesPaginated,
     createHashtagRelationship,
     createIfHashtagNotExist,
